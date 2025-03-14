@@ -34,17 +34,21 @@ pipeline {
         stage('Install Checkov') {
     steps {
         sh '''
-        set -e  # Exit on any error
-        # Install Python3 and Pip
-        sudo yum install -y python3 python3-pip
+        set -e  # Stop on first error
+        # Install Python3 and Pip without requiring password input
+        echo "jenkins" | sudo -S yum install -y python3 python3-pip
         # Upgrade pip and install Checkov
         python3 -m pip install --upgrade pip
-        python3 -m pip install checkov --quiet
+        python3 -m pip install --user checkov --quiet
         # Ensure ~/.local/bin is in PATH
+        CHECKOV_PATH=$(python3 -m site --user-base)/bin
+        echo "Checkov should be in: $CHECKOV_PATH"
+        ls -l $CHECKOV_PATH
+        export PATH=$CHECKOV_PATH:$PATH
         echo 'export PATH=$HOME/.local/bin:$PATH' >> ~/.bashrc
-        source ~/.bashrc
+        echo "Updated PATH: $PATH"
         # Verify Checkov installation
-        checkov --version
+        checkov --version || { echo "Checkov installation failed"; exit 1; }
         '''
     }
 }
